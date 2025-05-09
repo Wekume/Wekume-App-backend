@@ -1,0 +1,24 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "Dinushan",
+    "dev",
+    "main",
+    "revert-4-setup/project-structure",
+    "setup/project-structure"
+  ],
+  "parent": {
+    "Dinushan": "main",
+    "dev": "main",
+    "main": null,
+    "revert-4-setup/project-structure": "main",
+    "setup/project-structure": "main"
+  },
+  "order": [
+    "main",
+    "Dinushan",
+    "dev",
+    "revert-4-setup/project-structure",
+    "setup/project-structure"
+  ]
+}
