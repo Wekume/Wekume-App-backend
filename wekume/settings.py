@@ -200,6 +200,13 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='admin@wekume.app')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='coconut-landfall-jiffy-varmint-transpose-aim')  # Added default
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Wekume <admin@wekume.app>')
 
+
+# Africa's Talking Configuration
+AFRICAS_TALKING_USERNAME = config('AFRICAS_TALKING_USERNAME', default='wekume')
+AFRICAS_TALKING_API_KEY = config('AFRICAS_TALKING_API_KEY', default='')
+AFRICAS_TALKING_SENDER_ID = config('AFRICAS_TALKING_SENDER_ID', default='')
+SMS_VERIFICATION_ENABLED = config('SMS_VERIFICATION_ENABLED', default=False, cast=bool)
+
 # Temporarily hardcode this to bypass any environment variables
 SITE_URL = 'http://localhost:8000'
 

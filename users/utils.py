@@ -5,6 +5,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+import random
+from .africas_talking import send_verification_sms
 
 
 def generate_verification_token(user):
@@ -65,7 +67,7 @@ def send_verification_email(user, request=None):
         return False
     
     
-def send_verification_sms(user):
+def send_verification_sms_old(user):
     """
     Send a verification SMS to the user.
     This is a placeholder for future implementation.
@@ -90,3 +92,35 @@ def send_verification_sms(user):
     print(f"Verification SMS for {user}: {token}")
     
     return True
+
+
+def generate_phone_verification_code(user):
+    """
+    Generate a 6-digit verification code for phone verification.
+    """
+    # Generate a 6-digit code
+    code = str(random.randint(100000, 999999))
+    expires = timezone.now() + timedelta(minutes=15)  # Code expires in 15 minutes
+    
+    # Save code to user
+    user.phone_verification_token = code
+    user.phone_verification_token_expires = expires
+    user.save(update_fields=['phone_verification_token', 'phone_verification_token_expires'])
+    
+    return code
+
+def send_phone_verification(user):
+    """
+    Send a verification SMS to the user.
+    """
+    if not user.phone:
+        return False
+    
+    # Generate code if not already present
+    if not user.phone_verification_token:
+        code = generate_phone_verification_code(user)
+    else:
+        code = user.phone_verification_token
+    
+    # Send SMS
+    return send_verification_sms(user.phone, code)

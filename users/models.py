@@ -49,6 +49,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     """
     email = models.EmailField('email address', unique=True, null=True, blank=True)
     phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    phone_verification_required = models.BooleanField(default=True)
     
     # Replace name with first_name, middle_name, last_name
     first_name = models.CharField(max_length=100)
