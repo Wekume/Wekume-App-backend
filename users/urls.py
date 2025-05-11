@@ -1,29 +1,30 @@
-
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .viewsets import (
     RegisterViewSet,
     LoginViewSet,
-    LogoutViewSet,  # Add this import
+    LogoutViewSet,
     PasswordResetRequestViewSet,
     PasswordResetConfirmViewSet,
     UserViewSet,
     ProfileViewSet,
     EmailVerificationViewSet,
-    GoogleAuthViewSet
+    GoogleAuthViewSet,
+    PhoneVerificationViewSet  # Add this import
 )
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
 router.register(r'register', RegisterViewSet, basename='register')
 router.register(r'login', LoginViewSet, basename='login')
-router.register(r'logout', LogoutViewSet, basename='logout')  # Add this line
+router.register(r'logout', LogoutViewSet, basename='logout')
 router.register(r'password-reset-request', PasswordResetRequestViewSet, basename='password-reset-request')
 router.register(r'password-reset-confirm', PasswordResetConfirmViewSet, basename='password-reset-confirm')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'profile', ProfileViewSet, basename='profile')
 router.register(r'verify-email', EmailVerificationViewSet, basename='verify-email')
+router.register(r'verify-phone', PhoneVerificationViewSet, basename='verify-phone')  # Add this line
 router.register(r'auth/google', GoogleAuthViewSet, basename='google-auth')
 
 # The API URLs are now determined automatically by the router

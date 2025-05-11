@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserProfile
 from .google_auth import verify_google_token
+from django.conf import settings
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 import logging
 
@@ -25,18 +26,26 @@ from .serializers import (
     UserUpdateSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    PhoneVerificationSerializer,
     EmailVerificationSerializer
 )
 
-logger = logging.getLogger(__name__)
-
-from .utils import generate_verification_token, send_verification_email
+from .utils import (
+    generate_verification_token, 
+    send_verification_email,
+    generate_phone_verification_code,
+    send_phone_verification
+)
 
 User = get_user_model()
 
 # Define the throttle class BEFORE it's used
 class EmailResendThrottle(AnonRateThrottle):
     rate = '3/hour'  # Allow 3 resend requests per hour
+
+
+class PhoneVerificationThrottle(AnonRateThrottle):
+    rate = '3/hour'  # Allow 3 SMS requests per hour
 
 
 class RegisterViewSet(viewsets.ViewSet):
@@ -67,24 +76,36 @@ class RegisterViewSet(viewsets.ViewSet):
         })
     
     def create(self, request):
-        """
-        POST method - registers a new user
-        """
+        #POST method - registers a new user
+    
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             
+            # Variables to track verification status
+            email_verification_sent = False
+            phone_verification_sent = False
+            
             # Send verification email if email is provided
-            verification_sent = False
             if user.email:
                 # Generate verification token and send email
                 token = generate_verification_token(user)
-                verification_sent = send_verification_email(user, request)
+                email_verification_sent = send_verification_email(user, request)
+            
+            # Send phone verification if phone is provided and SMS verification is enabled
+            if user.phone and getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+                # Set phone verification required
+                user.phone_verification_required = True
+                user.save()
+                
+                # Generate verification code and send SMS
+                code = generate_phone_verification_code(user)
+                phone_verification_sent = send_phone_verification(user)
             
             # Generate tokens
             refresh = RefreshToken.for_user(user)
             
-            # Return user data, tokens, and verification status
+            # Initialize response_data ONCE with user data and tokens
             response_data = {
                 'user': UserSerializer(user).data,
                 'refresh': str(refresh),
@@ -92,11 +113,20 @@ class RegisterViewSet(viewsets.ViewSet):
                 'message': 'User registered successfully'
             }
             
+            # Add email verification info if email is provided
             if user.email:
                 response_data['email_verification'] = {
                     'required': True,
-                    'sent': verification_sent,
+                    'sent': email_verification_sent,
                     'message': 'Please check your email to verify your account'
+                }
+            
+            # Add phone verification info if phone is provided and SMS verification is enabled
+            if user.phone and getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+                response_data['phone_verification'] = {
+                    'required': True,
+                    'sent': phone_verification_sent,
+                    'message': 'Please check your phone to verify your account'
                 }
             
             return Response(response_data, status=status.HTTP_201_CREATED)
@@ -126,9 +156,8 @@ class LoginViewSet(viewsets.ViewSet):
 
 
     def create(self, request):
-        """
-        POST method - logs in a user
-        """
+    #POST method - logs in a user
+    
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data.get('email')
@@ -140,7 +169,6 @@ class LoginViewSet(viewsets.ViewSet):
                 user = User.objects.filter(email=email).first()
             else:
                 user = User.objects.filter(phone=phone).first()
-            
             # Check if user exists and password is correct
             if user and user.check_password(password):
                 # Check if email is verified (if using email login)
@@ -148,6 +176,18 @@ class LoginViewSet(viewsets.ViewSet):
                     return Response({
                         'message': 'Email not verified',
                         'email_verification_required': True
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check if phone is verified (if using phone login) and SMS verification is enabled
+                if phone and not user.phone_verified and getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+                    # Generate a new verification code if needed
+                    if not user.phone_verification_token or user.phone_verification_token_expires < timezone.now():
+                        code = generate_phone_verification_code(user)
+                        send_phone_verification(user)
+                    
+                    return Response({
+                        'message': 'Phone not verified',
+                        'phone_verification_required': True
                     }, status=status.HTTP_403_FORBIDDEN)
                 
                 # Generate tokens
@@ -167,8 +207,6 @@ class LoginViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-# users/viewsets.py - Update the LogoutViewSet
 
 class LogoutViewSet(viewsets.ViewSet):
     """
@@ -432,7 +470,7 @@ class ProfileViewSet(viewsets.ViewSet):
             partial=is_partial,
             context={'request': request}  # Add this line
         )
-        
+
         if serializer.is_valid():
             # Check if email is being updated
             email_updated = False
@@ -449,7 +487,6 @@ class ProfileViewSet(viewsets.ViewSet):
                 serializer.save()
                 
                 # Generate verification token and send email
-                from .utils import generate_verification_token, send_verification_email
                 token = generate_verification_token(user)
                 verification_sent = send_verification_email(user, request)
                 
@@ -492,6 +529,7 @@ class ProfileViewSet(viewsets.ViewSet):
             'message': 'Profile picture uploaded successfully',
             'profile': UserProfileSerializer(profile).data
         }, status=status.HTTP_200_OK)
+
 
 class EmailVerificationViewSet(viewsets.ViewSet):
     """
@@ -591,11 +629,121 @@ class EmailVerificationViewSet(viewsets.ViewSet):
             return Response({
                 'message': 'If a user with this email exists, a verification email has been sent'
             }, status=status.HTTP_200_OK)
-        
         logger.warning(f"Invalid resend verification request: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-   
+
+class PhoneVerificationViewSet(viewsets.ViewSet):
+    """
+    ViewSet for phone verification
+    """
+    serializer_class = PhoneVerificationSerializer
+    throttle_classes = [PhoneVerificationThrottle]
+    
+    def list(self, request):
+        """
+        GET method - provides information about the phone verification endpoint
+        """
+        # Check if SMS verification is enabled
+        if not getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+            return Response({
+                "message": "Phone verification is currently disabled",
+                "status": "disabled"
+            })
+            
+        return Response({
+            "message": "Use the following endpoints for phone verification",
+            "endpoints": {
+                "POST /api/verify-phone/request/": "Request a verification code via SMS",
+                "POST /api/verify-phone/confirm/": "Verify your phone with the code received"
+            }
+        })
+    
+    @action(detail=False, methods=['post'])
+    def request(self, request):
+        """
+        Request phone verification by sending an SMS with a verification code.
+        """
+        # Check if SMS verification is enabled
+        if not getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+            return Response({
+                'message': 'Phone verification is currently disabled',
+                'status': 'disabled'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        user = request.user
+        
+        if not user.phone:
+            return Response({
+                'message': 'No phone number associated with this account'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if user.phone_verified:
+            return Response({
+                'message': 'Phone number is already verified'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate and send verification code
+        code = generate_phone_verification_code(user)
+        verification_sent = send_phone_verification(user)
+        
+        if verification_sent:
+            return Response({
+                'message': 'Verification code sent successfully',
+                'phone': user.phone[-4:]  # Return last 4 digits for reference
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'message': 'Failed to send verification code'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'])
+    def confirm(self, request):
+        """
+        Confirm phone verification with the code received via SMS.
+        """
+        # Check if SMS verification is enabled
+        if not getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+            return Response({
+                'message': 'Phone verification is currently disabled',
+                'status': 'disabled'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        user = request.user
+        code = request.data.get('code')
+        
+        if not code:
+            return Response({
+                'message': 'Verification code is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user.phone_verification_token:
+            return Response({
+                'message': 'No verification code has been requested'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if user.phone_verification_token_expires < timezone.now():
+            return Response({
+                'message': 'Verification code has expired'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if user.phone_verification_token != code:
+            return Response({
+                'message': 'Invalid verification code'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark phone as verified
+        user.phone_verified = True
+        user.phone_verification_token = None
+        user.phone_verification_token_expires = None
+        user.save()
+        
+        return Response({
+            'message': 'Phone number verified successfully',
+            'phone': user.phone
+        }, status=status.HTTP_200_OK)
+
+
 class GoogleAuthViewSet(viewsets.ViewSet):
     """
     ViewSet for Google authentication

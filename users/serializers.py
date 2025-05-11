@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import UserProfile
+from django.conf import settings
 
 User = get_user_model()
 
@@ -119,8 +120,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
     
     def create(self, validated_data):
-        # Remove password2 from the data
+    # Remove password2 from the data
         validated_data.pop('password2', None)
+        
+        # If phone is provided and SMS verification is enabled, set phone_verification_required to True
+        if validated_data.get('phone') and getattr(settings, 'SMS_VERIFICATION_ENABLED', False):
+            validated_data['phone_verification_required'] = True
+        elif validated_data.get('phone'):
+            # If SMS verification is disabled, mark phone as verified automatically
+            validated_data['phone_verified'] = True
+            validated_data['phone_verification_required'] = False
         
         user = User.objects.create_user(**validated_data)
         return user
@@ -190,3 +199,23 @@ class EmailVerificationSerializer(serializers.Serializer):
     
 class GoogleAuthSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
+    
+class PhoneVerificationSerializer(serializers.Serializer):
+    """
+    Serializer for phone verification
+    """
+    code = serializers.CharField(required=False)
+    phone = serializers.CharField(required=False)
+    
+    def validate(self, attrs):
+        # For confirming verification, we need a code
+        if self.context.get('request') and getattr(self.context['request'], 'path', '').endswith('confirm/'):
+            if not attrs.get('code'):
+                raise serializers.ValidationError({"code": "Verification code is required."})
+        
+        # For requesting verification, we need a phone number
+        if self.context.get('request') and getattr(self.context['request'], 'path', '').endswith('request/'):
+            if not attrs.get('phone'):
+                raise serializers.ValidationError({"phone": "Phone number is required to send verification."})
+        
+        return attrs

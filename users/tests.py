@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from rest_framework.test import APIClient
 from rest_framework import status
+from .utils import generate_phone_verification_code, send_phone_verification
 from unittest.mock import patch, MagicMock
 from datetime import timedelta
 import uuid
@@ -357,16 +358,21 @@ class LoginViewSetTests(TestCase):
         
     def test_login_with_phone(self):
         """Test login with a phone number"""
+        # Mark the phone as verified
+        self.phone_user.phone_verified = True
+        self.phone_user.save()
+        
         payload = {
             'phone': '1234567890',
             'password': 'testpass123'
         }
         
-        response = self.client.post(
-            self.login_url,
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        with patch('django.conf.settings.SMS_VERIFICATION_ENABLED', False):
+            response = self.client.post(
+                self.login_url,
+                data=json.dumps(payload),
+                content_type='application/json'
+            )
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('refresh', response.data)
@@ -1048,3 +1054,185 @@ class GoogleAuthViewSetTests(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('error', response.data)
+
+
+class PhoneVerificationTests(TestCase):
+    """Tests for phone verification functionality"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.request_url = reverse('verify-phone-request')
+        self.confirm_url = reverse('verify-phone-confirm')
+        self.verify_phone_list_url = reverse('verify-phone-list')
+        
+        # Create a user with unverified phone
+        self.user = User.objects.create_user(
+            phone='+2347033495178',
+            password='testpass123',
+            first_name='Phone',
+            last_name='User',
+            gender='Male',
+            age=25,
+            school='Test University'
+        )
+        
+        # Authenticate the client
+        self.client.force_authenticate(user=self.user)
+    
+    def test_phone_verification_disabled(self):
+        """Test that phone verification endpoints return appropriate responses when SMS is disabled"""
+        # Test with SMS_VERIFICATION_ENABLED = False
+        with patch('django.conf.settings.SMS_VERIFICATION_ENABLED', False):
+            # Test the list endpoint
+            response = self.client.get(self.verify_phone_list_url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data['message'], 'Phone verification is currently disabled')
+            
+            # Test the request endpoint
+            response = self.client.post(self.request_url)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(response.data['message'], 'Phone verification is currently disabled')
+            
+            # Test the confirm endpoint
+            response = self.client.post(
+                self.confirm_url,
+                data=json.dumps({'code': '123456'}),
+                content_type='application/json'
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(response.data['message'], 'Phone verification is currently disabled')
+
+
+class RegisterWithPhoneTests(TestCase):
+    """Tests for registering with a phone number and SMS verification"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.register_url = reverse('register-list')
+        self.valid_payload = {
+            'phone': '+2347033495178',
+            'first_name': 'Phone',
+            'last_name': 'User',
+            'gender': 'Male',
+            'age': 25,
+            'school': 'Test University',
+            'password': 'securepassword123',
+            'password2': 'securepassword123'
+        }
+    
+    def test_register_with_phone_when_sms_disabled(self):
+        """Test registering with a phone number when SMS verification is disabled"""
+        # Use settings override for this specific test
+        with patch('django.conf.settings.SMS_VERIFICATION_ENABLED', False):
+            response = self.client.post(
+                self.register_url,
+                data=json.dumps(self.valid_payload),
+                content_type='application/json'
+            )
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Check that the user was created and phone is automatically verified
+        user = User.objects.get(phone='+2347033495178')
+        self.assertTrue(user.phone_verified)
+        self.assertFalse(user.phone_verification_required)
+        
+        # Check that phone verification info is not in the response
+        self.assertNotIn('phone_verification', response.data)
+
+
+class LoginWithPhoneVerificationTests(TestCase):
+    """Tests for login with phone verification requirement"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.login_url = reverse('login-list')
+        
+        # Create a user with unverified phone
+        self.unverified_user = User.objects.create_user(
+            phone='+2347033495178',
+            password='testpass123',
+            first_name='Unverified',
+            last_name='Phone',
+            gender='Male',
+            age=25,
+            school='Test University',
+            phone_verification_required=True
+        )
+        
+        # Create a user with verified phone
+        self.verified_user = User.objects.create_user(
+            phone='+2347033495179',
+            password='testpass123',
+            first_name='Verified',
+            last_name='Phone',
+            gender='Male',
+            age=25,
+            school='Test University',
+            phone_verification_required=True,
+            phone_verified=True
+        )
+    
+    def test_login_with_unverified_phone_when_sms_disabled(self):
+        """Test login with an unverified phone when SMS verification is disabled"""
+        payload = {
+            'phone': '+2347033495178',
+            'password': 'testpass123'
+        }
+        
+        # Use settings override for this specific test
+        with patch('django.conf.settings.SMS_VERIFICATION_ENABLED', False):
+            response = self.client.post(
+                self.login_url,
+                data=json.dumps(payload),
+                content_type='application/json'
+            )
+        
+        # Should be able to login even with unverified phone
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('refresh', response.data)
+        self.assertIn('access', response.data)
+
+
+class SMSUtilsTests(TestCase):
+    """Tests for SMS utility functions"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone='+2347033495178',
+            password='testpass123',
+            first_name='Test',
+            last_name='User',
+            gender='Male',
+            age=25,
+            school='Test University'
+        )
+    
+    def test_generate_phone_verification_code(self):
+        """Test generating a phone verification code"""
+        code = generate_phone_verification_code(self.user)
+        
+        # Code should be a 6-digit string
+        self.assertEqual(len(code), 6)
+        self.assertTrue(code.isdigit())
+        
+        # User should have the code and expiry time set
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.phone_verification_token, code)
+        self.assertIsNotNone(self.user.phone_verification_token_expires)
+        
+        # Expiry should be 15 minutes in the future
+        time_diff = self.user.phone_verification_token_expires - timezone.now()
+        self.assertTrue(time_diff.total_seconds() > 14 * 60)  # At least 14 minutes
+    
+    def test_send_phone_verification_when_disabled(self):
+        """Test sending a phone verification SMS when SMS verification is disabled"""
+        # Generate a code first
+        code = generate_phone_verification_code(self.user)
+        
+        # Test with SMS_VERIFICATION_ENABLED = False
+        with patch('django.conf.settings.SMS_VERIFICATION_ENABLED', False):
+            result = send_phone_verification(self.user)
+        
+        # Should return True even though no actual SMS is sent
+        self.assertTrue(result)
