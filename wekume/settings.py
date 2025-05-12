@@ -14,12 +14,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', cast=str)
 
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", cast=bool)
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
-
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,wekume.onrender.com", cast=Csv())
 
 # Application definition
 
@@ -79,10 +77,10 @@ SIMPLE_JWT = {
 }
 
 
-CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
+    "https://wekume.onrender.com",  #
 ]
 
 
@@ -125,19 +123,19 @@ WSGI_APPLICATION = 'wekume.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 
-
+# First define your DATABASES dictionary
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DATABASE_NAME'),
-        'USER': config('DATABASE_USER'),
-        'PASSWORD': config('DATABASE_PASSWORD'),
-        'HOST': 'localhost',
-        'PORT': '5433',
+        'NAME': config('DATABASE_NAME', default='wekume'),
+        'USER': config('DATABASE_USER', default='postgres'),
+        'PASSWORD': config('DATABASE_PASSWORD', default=''),
+        'HOST': config('DATABASE_HOST', default='localhost'),
+        'PORT': config('DATABASE_PORT', default='5433'),
     }
 }
 
-
+# Then check for DATABASE_URL and override if needed
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
     DATABASES['default'] = dj_database_url.parse(database_url)
@@ -214,8 +212,8 @@ AFRICAS_TALKING_API_KEY = config('AFRICAS_TALKING_API_KEY', default='')
 AFRICAS_TALKING_SENDER_ID = config('AFRICAS_TALKING_SENDER_ID', default='')
 SMS_VERIFICATION_ENABLED = config('SMS_VERIFICATION_ENABLED', default=False, cast=bool)
 
-# Temporarily hardcode this to bypass any environment variables
-SITE_URL = 'http://localhost:8000'
+
+SITE_URL = config('SITE_URL', default='http://localhost:8000')
 
 
 
