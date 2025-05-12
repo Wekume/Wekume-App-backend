@@ -36,10 +36,11 @@ def send_verification_email(user, request=None):
     else:
         token = user.email_verification_token
     
-    # COMPLETELY IGNORE settings and environment variables
-    # Hardcode the URL directly
-    verification_url = f"http://localhost:8000/api/verify-email/{token}/"
-    print(f"DEBUG - HARDCODED verification URL: {verification_url}")
+    # Use SITE_URL from settings instead of hardcoding localhost
+    from django.conf import settings
+    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+    verification_url = f"{site_url}/api/verify-email/{token}/"
+    print(f"DEBUG - Verification URL: {verification_url}")
     
     # Prepare email content
     subject = "Verify your email address for Wekume"
@@ -61,6 +62,7 @@ def send_verification_email(user, request=None):
             html_message=html_message,
             fail_silently=False,
         )
+        print(f"Email sent successfully to {user.email}")
         return True
     except Exception as e:
         print(f"Error sending verification email: {e}")
