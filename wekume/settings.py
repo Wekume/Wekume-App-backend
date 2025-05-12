@@ -124,8 +124,6 @@ WSGI_APPLICATION = 'wekume.wsgi.application'
 
 
 # Database configuration
-import dj_database_url
-
 # First check if DATABASE_URL is available (Render deployment)
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
