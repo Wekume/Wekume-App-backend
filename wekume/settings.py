@@ -218,7 +218,9 @@ AFRICAS_TALKING_SENDER_ID = config('AFRICAS_TALKING_SENDER_ID', default='')
 SMS_VERIFICATION_ENABLED = config('SMS_VERIFICATION_ENABLED', default=False, cast=bool)
 
 
-SITE_URL = config('SITE_URL', default='http://localhost:8000')
+# Use SITE_URL from environment or default to Render URL
+SITE_URL = config('SITE_URL', default='https://wekume-user-api.onrender.com')
+
 
 
 
