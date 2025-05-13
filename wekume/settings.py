@@ -77,11 +77,15 @@ SIMPLE_JWT = {
 }
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "https://wekume.onrender.com",  #
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://localhost:8000",
+#     "https://wekume.onrender.com",  #
+# ]
+
+# Allow all origins for CORS (development only)
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True  # If you need to support credentials
 
 
 MIDDLEWARE = [
