@@ -36,9 +36,9 @@ def send_verification_email(user, request=None):
     else:
         token = user.email_verification_token
     
-    # Use SITE_URL from settings instead of hardcoding localhost
+    # Use SITE_URL from settings
     from django.conf import settings
-    site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
+    site_url = settings.SITE_URL  # Get the actual value
     verification_url = f"{site_url}/api/verify-email/{token}/"
     print(f"DEBUG - Verification URL: {verification_url}")
     
