@@ -4,7 +4,6 @@ __pycache__/
 db.sqlite3
 
 # Environments
-.env
 venv/
 ENV/
 env/
@@ -14,7 +13,8 @@ env/
 /media/
 
 # VSCode
-.vscode/
 
 # Mac OS system files
 .DS_Store
+config.bat
+node_modules
