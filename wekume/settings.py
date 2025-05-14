@@ -108,7 +108,7 @@ ROOT_URLCONF = 'wekume.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # Added templates directory
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],  # Added templates directory
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

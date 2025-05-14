@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
+from . import views
 from .viewsets import (
     RegisterViewSet,
     LoginViewSet,
@@ -32,4 +33,5 @@ urlpatterns = [
     path('', include(router.urls)),
     # Add the token refresh endpoint
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('reset-password/', views.password_reset_form, name='password_reset_form'),
 ]
