@@ -10,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserProfile
 from .google_auth import verify_google_token
 from django.conf import settings
+from .utils import send_verification_email, send_password_reset_email, send_phone_verification
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 import logging
 
@@ -278,18 +279,18 @@ class PasswordResetRequestViewSet(viewsets.ViewSet):
                 user = User.objects.filter(phone=email_or_phone).first()
             
             if user:
-                # Generate reset token
-                token = uuid.uuid4().hex
-                expires = timezone.now() + timedelta(hours=1)
-                
-                # Save token to user
-                user.reset_token = token
-                user.reset_token_expires = expires
-                user.save()
-
-                # In a real app, you would send an email or SMS here
-                # For now, we'll just print the token
-                print(f"Reset token for {user}: {token}")
+                # Send password reset email
+                if '@' in email_or_phone:  # It's an email
+                    send_password_reset_email(user, request)
+                else:  # It's a phone number
+                    # For now, we'll just print the token for phone resets
+                    # In a real app, you would send an SMS here
+                    token = uuid.uuid4().hex
+                    expires = timezone.now() + timedelta(hours=1)
+                    user.reset_token = token
+                    user.reset_token_expires = expires
+                    user.save()
+                    print(f"Reset token for {user.phone}: {token}")
                 
                 return Response({
                     'message': 'Password reset instructions sent'
