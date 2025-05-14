@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import UserProfile
 from django.conf import settings
+from .models import UserSession
 
 User = get_user_model()
 
@@ -169,6 +170,16 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
+    
+    
+class UserSessionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for UserSession model
+    """
+    class Meta:
+        model = UserSession
+        fields = ['session_id', 'device_info', 'ip_address', 'last_activity', 'is_active', 'created_at']
+        read_only_fields = ['session_id', 'created_at', 'last_activity']
 
 
 class EmailVerificationSerializer(serializers.Serializer):

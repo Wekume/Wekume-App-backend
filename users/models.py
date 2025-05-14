@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 
-
 class CustomUserManager(BaseUserManager):
     """
     Custom user manager where email or phone is the unique identifier
@@ -122,3 +121,24 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f"{self.user}'s profile"
+
+
+# Move UserSession after User is defined
+class UserSession(models.Model):
+    """
+    Model to track user sessions across devices
+    """
+    # Use the actual User model now that it's defined
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    session_id = models.CharField(max_length=255, unique=True)  # Store the JWT jti claim
+    device_info = models.CharField(max_length=255, blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user} - {self.device_info} - {self.created_at}"

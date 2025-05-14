@@ -9,9 +9,15 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserProfile
 from .google_auth import verify_google_token
+from .session_utils import create_user_session
 from django.conf import settings
 from .utils import send_verification_email, send_password_reset_email, send_phone_verification
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from .session_utils import create_user_session, invalidate_user_session
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import viewsets, permissions, status
+from .models import UserSession
+from .serializers import UserSessionSerializer
 import logging
 
 # Add logger
@@ -193,6 +199,8 @@ class LoginViewSet(viewsets.ViewSet):
                 
                 # Generate tokens
                 refresh = RefreshToken.for_user(user)
+                # Create session record
+                create_user_session(user, request, refresh['jti'])
                 
                 # Return user data and tokens
                 return Response({
@@ -213,8 +221,8 @@ class LogoutViewSet(viewsets.ViewSet):
     """
     ViewSet for user logout
     """
-    permission_classes = [permissions.AllowAny]  # Allow any user to access this viewset
-    serializer_class = None  # No serializer needed for logout
+    permission_classes = [permissions.AllowAny]  # 
+    serializer_class = None  
     
     def list(self, request):
         """
@@ -237,6 +245,11 @@ class LogoutViewSet(viewsets.ViewSet):
                 return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
                 
             token = RefreshToken(refresh_token)
+            
+            # Invalidate the session
+            invalidate_user_session(token['jti'])
+            
+            #blacklist the token
             token.blacklist()
             
             return Response({
@@ -809,3 +822,122 @@ class GoogleAuthViewSet(viewsets.ViewSet):
                 'message': 'User registered successfully',
                 'is_new_user': True
             }, status=status.HTTP_201_CREATED)
+            
+            
+class SessionViewSet(viewsets.ViewSet):
+    """
+    ViewSet for managing user sessions
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSessionSerializer
+    
+    def list(self, request):
+        """
+        GET method - lists all active sessions for the current user
+        """
+        sessions = UserSession.objects.filter(
+            user=request.user,
+            is_active=True
+        )
+        serializer = UserSessionSerializer(sessions, many=True)
+        return Response(serializer.data)
+    
+    def retrieve(self, request, pk=None):
+        """
+        GET method - retrieves a specific session
+        """
+        try:
+            session = UserSession.objects.get(
+                session_id=pk,
+                user=request.user
+            )
+            serializer = UserSessionSerializer(session)
+            return Response(serializer.data)
+        except UserSession.DoesNotExist:
+            return Response(
+                {"error": "Session not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    def destroy(self, request, pk=None):
+        """
+        DELETE method - terminates a specific session
+        """
+        try:
+            session = UserSession.objects.get(
+                session_id=pk,
+                user=request.user
+            )
+            
+            # Check if this is the current session
+            current_token = request.auth
+            if current_token and current_token['jti'] == session.session_id:
+                return Response(
+                    {"error": "Cannot terminate your current session. Use logout instead."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Invalidate the session
+            session.is_active = False
+            session.save()
+            
+            # Try to blacklist the token
+            try:
+                from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+                token = OutstandingToken.objects.get(jti=session.session_id)
+                token.blacklisted = True
+                token.save()
+            except Exception:
+                # If we can't find the token, it might be expired already
+                pass
+            
+            return Response(
+                {"message": "Session terminated successfully"},
+                status=status.HTTP_200_OK
+            )
+        except UserSession.DoesNotExist:
+            return Response(
+                {"error": "Session not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['post'])
+    def logout_all(self, request):
+        """
+        POST method - logs out from all devices except the current one
+        """
+        current_token = request.auth
+        
+        if not current_token:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Get all active sessions except the current one
+        sessions = UserSession.objects.filter(
+            user=request.user,
+            is_active=True
+        ).exclude(session_id=current_token['jti'])
+        
+        # Invalidate all sessions
+        sessions.update(is_active=False)
+        
+        # Try to blacklist all tokens
+        try:
+            from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+            for session in sessions:
+                try:
+                    token = OutstandingToken.objects.get(jti=session.session_id)
+                    token.blacklisted = True
+                    token.save()
+                except Exception:
+                    # If we can't find the token, it might be expired already
+                    pass
+        except Exception:
+            pass
+        
+        return Response({
+            "message": f"Logged out from {sessions.count()} other devices",
+            "count": sessions.count()
+        })
