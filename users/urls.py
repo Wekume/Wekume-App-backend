@@ -9,6 +9,7 @@ from .viewsets import (
     PasswordResetRequestViewSet,
     PasswordResetConfirmViewSet,
     UserViewSet,
+    SessionViewSet,
     ProfileViewSet,
     EmailVerificationViewSet,
     GoogleAuthViewSet,
@@ -26,7 +27,8 @@ router.register(r'users', UserViewSet, basename='user')
 router.register(r'profile', ProfileViewSet, basename='profile')
 router.register(r'verify-email', EmailVerificationViewSet, basename='verify-email')
 router.register(r'verify-phone', PhoneVerificationViewSet, basename='verify-phone')  # Add this line
-router.register(r'auth/google', GoogleAuthViewSet, basename='google-auth')
+router.register(r'auth/google', GoogleAuthViewSet, basename='google-auth'),
+router.register(r'sessions', SessionViewSet, basename='session')
 
 # The API URLs are now determined automatically by the router
 urlpatterns = [
