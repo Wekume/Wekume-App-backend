@@ -1,0 +1,45 @@
+/* Fix alignment issues */
+.sidebar-menu li a {
+    padding: 12px 15px;
+}
+
+.content-wrapper {
+    padding: 20px;
+}
+
+.main-header {
+    margin-left: 0 !important;
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.card {
+    margin-bottom: 1rem;
+}
+
+.btn {
+    margin-right: 0.25rem;
+}
+
+.main-footer {
+    margin-left: 0 !important;
+}
+
+/* Fix for mobile */
+@media (max-width: 767.98px) {
+    .main-sidebar, .main-sidebar::before {
+        box-shadow: none !important;
+        margin-left: 0 !important;
+    }
+    
+    .content-wrapper {
+        margin-left: 0 !important;
+    }
+}

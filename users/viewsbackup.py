@@ -25,7 +25,7 @@ from .serializers import (
     UserProfileUpdateSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
-    EmailVerificationSerializer,  # Add this import if you create this serializer
+    EmailVerificationSerializer,  
 )
 from .utils import generate_verification_token, send_verification_email
 
@@ -51,9 +51,9 @@ class AuthViewSet(viewsets.GenericViewSet):
         elif self.action == 'password_reset_confirm':
             return PasswordResetConfirmSerializer
         elif self.action == 'verify_email':
-            return EmailVerificationSerializer  # You may need to create this
+            return EmailVerificationSerializer  
         elif self.action == 'resend_verification':
-            return EmailVerificationSerializer  # You may need to create this
+            return EmailVerificationSerializer  
         return UserSerializer
     
     @action(detail=False, methods=['post'])
