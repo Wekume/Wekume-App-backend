@@ -126,3 +126,61 @@ def send_phone_verification(user):
     
     # Send SMS
     return send_verification_sms(user.phone, code)
+
+
+
+
+def send_password_reset_email(user, request=None):
+    """
+    Send a password reset email to the user.
+    """
+    if not user.email:
+        return False
+    
+    # Generate token if not already present
+    if not user.reset_token:
+        # Generate reset token
+        token = uuid.uuid4().hex
+        expires = timezone.now() + timedelta(hours=1)
+        
+        # Save token to user
+        user.reset_token = token
+        user.reset_token_expires = expires
+        user.save(update_fields=['reset_token', 'reset_token_expires'])
+    else:
+        token = user.reset_token
+    
+    # Use SITE_URL from settings
+    from django.conf import settings
+    site_url = settings.SITE_URL  # Get the actual value
+    
+    # For a better UX, this should point to a frontend page that will collect the new password
+    # and then call the password-reset-confirm API endpoint
+    reset_url = f"{site_url}/reset-password?token={token}"
+    print(f"DEBUG - Password Reset URL: {reset_url}")
+    
+    # Prepare email content
+    subject = "Reset Your Password for Wekume"
+    html_message = render_to_string('email/password_reset_email.html', {
+        'user': user,
+        'reset_url': reset_url,
+        'token': token,
+        'expires_in': '1 hour'
+    })
+    plain_message = strip_tags(html_message)
+    
+    # Send email
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        print(f"Password reset email sent successfully to {user.email}")
+        return True
+    except Exception as e:
+        print(f"Error sending password reset email: {e}")
+        return False
