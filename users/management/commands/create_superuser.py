@@ -7,10 +7,10 @@ class Command(BaseCommand):
     help = 'Creates a superuser'
 
     def handle(self, *args, **options):
-        if not User.objects.filter(email='admin@example.com').exists():
+        if not User.objects.filter(email='admin@wekume.app').exists():
             User.objects.create_superuser(
-                email='admin@example.com',
-                password='your-secure-password',
+                email='admin@wekume.app',
+                password='joshuarandy',
                 first_name='Admin',
                 last_name='User',
                 gender='Other',
