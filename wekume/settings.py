@@ -71,14 +71,14 @@ JAZZMIN_SETTINGS = {
     
     # UI Tweaks
     "show_ui_builder": True,
-    "changeform_format": "horizontal_tabs",
+    "changeform_format": "single",  # Changed from horizontal_tabs to single
     "changeform_format_overrides": {
         "auth.user": "collapsible",
         "users.user": "collapsible",
     },
     
     # Custom CSS/JS for extra styling
-    "custom_css": None,
+    "custom_css": "admin/css/jazzmin-fixes.css",  # Updated to use custom CSS
     "custom_js": None,
     
     # Icons
@@ -87,6 +87,10 @@ JAZZMIN_SETTINGS = {
         "users.userprofile": "fas fa-id-card",
         "auth.Group": "fas fa-users",
     },
+    
+    # Additional settings
+    "related_modal_active": False,
+    "use_google_fonts_cdn": True,
     
     # Default theme
     "default_theme": "default",
@@ -100,13 +104,13 @@ JAZZMIN_UI_TWEAKS = {
     "brand_small_text": False,
     "brand_colour": "navbar-primary",
     "accent": "accent-primary",
-    "navbar": "navbar-dark",
+    "navbar": "navbar-white navbar-light",  # Changed to lighter navbar
     "no_navbar_border": False,
     "navbar_fixed": False,
     "layout_boxed": False,
     "footer_fixed": False,
     "sidebar_fixed": False,
-    "sidebar": "sidebar-dark-primary",
+    "sidebar": "sidebar-light-primary",  # Changed to lighter sidebar
     "sidebar_nav_small_text": False,
     "sidebar_disable_expand": False,
     "sidebar_nav_child_indent": False,
@@ -168,6 +172,7 @@ CORS_ALLOW_CREDENTIALS = True  # If you need to support credentials
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Added for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware', #cors settings
     'django.middleware.common.CommonMiddleware',
@@ -190,6 +195,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',  # Added debug context processor
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -237,7 +243,6 @@ else:
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -269,8 +274,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  
+STATIC_URL = '/static/'  # Added leading slash
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Add this for custom static files
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# Add this for better static file handling
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -302,8 +315,6 @@ SMS_VERIFICATION_ENABLED = config('SMS_VERIFICATION_ENABLED', default=False, cas
 
 # Use SITE_URL from environment or default to Render URL
 SITE_URL = config('SITE_URL', default='https://wekume-user-api.onrender.com')
-
-
 
 
 LOGGING = {
