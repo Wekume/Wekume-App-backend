@@ -123,7 +123,6 @@ class UserProfile(models.Model):
         return f"{self.user}'s profile"
 
 
-# Move UserSession after User is defined
 class UserSession(models.Model):
     """
     Model to track user sessions across devices
@@ -131,7 +130,7 @@ class UserSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
     session_id = models.CharField(max_length=255, unique=True)  # Store the JWT jti claim
     device_info = models.CharField(max_length=255, blank=True, null=True)
-    ip_address = models.GenericIPAddressField(blank=True, null=True, protocol='both', unpack_ipv4=False)
+    ip_address = models.CharField(max_length=45, blank=True, null=True)
     last_activity = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
