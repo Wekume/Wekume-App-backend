@@ -22,7 +22,8 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,wekume-user
 # Application definition
 
 INSTALLED_APPS = [
-    'users.apps.UsersConfig',  # MOVED TO THE TOP
+    'users.apps.UsersConfig', # MOVED TO THE TOP
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,6 +47,83 @@ INSTALLED_APPS = [
     'shop',
     'utils',
 ]
+
+
+JAZZMIN_SETTINGS = {
+    # UI Customization
+    "site_title": "Wekume Admin",
+    "site_header": "Wekume",
+    "site_brand": "Wekume",
+    "site_logo": None,  # Add your logo path here if you have one
+    "welcome_sign": "Welcome to Wekume Admin",
+    "copyright": "Wekume",
+    
+    # Top Menu
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Site", "url": "/", "new_window": True},
+    ],
+    
+    # User Menu
+    "usermenu_links": [
+        {"name": "Support", "url": "https://github.com/yourusername/wekume/issues", "new_window": True},
+    ],
+    
+    # UI Tweaks
+    "show_ui_builder": True,
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "auth.user": "collapsible",
+        "users.user": "collapsible",
+    },
+    
+    # Custom CSS/JS for extra styling
+    "custom_css": None,
+    "custom_js": None,
+    
+    # Icons
+    "icons": {
+        "users.user": "fas fa-user",
+        "users.userprofile": "fas fa-id-card",
+        "auth.Group": "fas fa-users",
+    },
+    
+    # Default theme
+    "default_theme": "default",
+}
+
+# Optional UI builder
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-primary",
+    "accent": "accent-primary",
+    "navbar": "navbar-dark",
+    "no_navbar_border": False,
+    "navbar_fixed": False,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": False,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    }
+}
 
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
