@@ -4,17 +4,20 @@ __pycache__/
 db.sqlite3
 
 # Environments
-.env
 venv/
 ENV/
 env/
 
+temp_auto_push.bat
 # Static and Media files
 /staticfiles/
 /media/
 
 # VSCode
-.vscode/
 
 # Mac OS system files
 .DS_Store
+config.bat
+node_modules
+.gitignore
+branch_structure.json
