@@ -11,11 +11,11 @@ User = get_user_model()
 
 @csrf_exempt
 def create_superuser(request):
-    if request.method == 'POST' and request.GET.get('secret') == 'your-secret-key':
+    if request.method == 'POST' and request.GET.get('secret') == '9_-9%yj+39yevb)4lx_w-^!&l&bn+*f(54+r#lte_b9x=m5^xv':
         if not User.objects.filter(email='admin@example.com').exists():
             User.objects.create_superuser(
-                email='admin@example.com',
-                password='your-secure-password',  # Change this to a strong password
+                email='admin@wekume.app',
+                password='joshuarandy',  # Change this to a strong password
                 first_name='Admin',
                 last_name='User',
                 gender='Other',
